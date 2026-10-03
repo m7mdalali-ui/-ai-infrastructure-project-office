@@ -197,3 +197,25 @@ def test_progress_comparison_flags_added_deleted_and_project_mismatch():
     u=Schedule("P2","Update",{"B":Activity("B","B",1)},[])
     codes={x["code"] for x in compare_programmes(b,u).data_exceptions}
     assert {"ADDED_ACTIVITIES","DELETED_ACTIVITIES","PROJECT_ID_MISMATCH"} <= codes
+
+
+def test_recovery_detects_material_bottleneck():
+    from datetime import date
+    from ai_project_office.planning.recovery import analyse_recovery
+    r=analyse_recovery(remaining_quantity=1200,target_date=date(2026,1,10),start_date=date(2026,1,1),
+                       production_per_crew_per_day=20,material_cap_per_day=60,workfront_cap_crews=10)
+    assert r.required_quantity_per_day==120
+    assert r.crews_by_production==6
+    assert r.practical_quantity_per_day==60
+    assert r.recoverable_by_target is False
+    assert "material" in r.bottleneck
+
+def test_recovery_detects_workfront_cap():
+    from datetime import date
+    from ai_project_office.planning.recovery import analyse_recovery
+    r=analyse_recovery(remaining_quantity=1000,target_date=date(2026,1,10),start_date=date(2026,1,1),
+                       production_per_crew_per_day=20,workfront_cap_crews=3)
+    assert r.crews_by_production==5
+    assert r.practical_crews==3
+    assert r.recoverable_by_target is False
+    assert "workfront" in r.bottleneck
