@@ -196,7 +196,8 @@ def test_progress_comparison_flags_added_deleted_and_project_mismatch():
     b=Schedule("P1","Base",{"A":Activity("A","A",1)},[])
     u=Schedule("P2","Update",{"B":Activity("B","B",1)},[])
     codes={x["code"] for x in compare_programmes(b,u).data_exceptions}
-    assert {"ADDED_ACTIVITIES","DELETED_ACTIVITIES","PROJECT_ID_MISMATCH"} <= codes
+    assert codes=={"PROJECT_ID_MISMATCH"}
+    assert compare_programmes(b,u).activity_changes==[]
 
 
 def test_recovery_detects_material_bottleneck():
@@ -240,7 +241,7 @@ def test_eot_requires_cp_evidence_before_supported_days():
 
 def test_eot_deducts_concurrency_and_mitigation_from_technical_impact():
     from ai_project_office.planning.eot import DelayEvent, assess_eot
-    r=assess_eot([DelayEvent("E1","Event",notice_ref="N1",evidence_refs=["R1"],affected_activities=["A"],critical_path_impact_days=20,concurrency_days=5,mitigation_days=3)],20)
+    r=assess_eot([DelayEvent("E1","Event",notice_ref="N1",evidence_refs=["R1"],affected_activities=["A"],critical_path_impact_days=20,concurrency_days=5,mitigation_days=3,impact_verified=True)],20)
     assert r.technically_supported_days==12
     assert r.concurrency_identified is True
 

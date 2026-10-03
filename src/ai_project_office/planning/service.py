@@ -3,9 +3,9 @@ from pathlib import Path
 from .parsers import parse_excel, parse_xer, parse_p6_xml, parse_msp_xml
 from .programme_review import review_programme
 
-def import_schedule(path: str|Path, *, excel_column_map=None):
+def import_schedule(path: str|Path, *, excel_column_map=None, project_id=None):
     p=Path(path); ext=p.suffix.lower()
-    if ext==".xer": return parse_xer(p)
+    if ext==".xer": return parse_xer(p,project_id=project_id)
     if ext==".xml":
         text=p.read_text(encoding="utf-8",errors="ignore")[:10000]
         return parse_msp_xml(p) if "<Project" in text and ("schemas.microsoft.com/project" in text or "<Tasks" in text) else parse_p6_xml(p)

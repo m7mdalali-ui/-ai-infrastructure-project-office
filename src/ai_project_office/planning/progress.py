@@ -15,6 +15,11 @@ class ProgressComparison:
 def _iso(d): return d.isoformat() if isinstance(d,datetime) else None
 
 def compare_programmes(baseline: Schedule, update: Schedule) -> ProgressComparison:
+    if baseline.project_id and update.project_id and baseline.project_id != update.project_id:
+        return ProgressComparison(
+            summary={"comparison_status":"BLOCKED","reason":"Explicit project mapping required before comparing different source project IDs."},
+            activity_changes=[],criticality_changes=[],logic_changes={"added":[],"removed":[]},
+            data_exceptions=[{"code":"PROJECT_ID_MISMATCH","baseline":baseline.project_id,"update":update.project_id}])
     base_ids=set(baseline.activities); upd_ids=set(update.activities)
     common=sorted(base_ids & upd_ids)
     added=sorted(upd_ids-base_ids); deleted=sorted(base_ids-upd_ids)
@@ -24,6 +29,16 @@ def compare_programmes(baseline: Schedule, update: Schedule) -> ProgressComparis
         b=baseline.activities[aid]; u=update.activities[aid]
         row={"activity_id":aid,"name":u.name}
         changed=False
+        for attribute in ("name","calendar_id","remaining_duration","actual_start","actual_finish","constraint_date","wbs"):
+            before=getattr(b,attribute); after=getattr(u,attribute)
+            if before != after:
+                row[attribute]={"baseline":_iso(before) if isinstance(before,datetime) else before,
+                                "update":_iso(after) if isinstance(after,datetime) else after}
+                changed=True
+        for field in ("constraint_type","constraint_type_2","constraint_date_2","free_float_hours","float_path","float_path_order"):
+            if b.metadata.get(field)!=u.metadata.get(field):
+                row[field]={"baseline":b.metadata.get(field),"update":u.metadata.get(field)}
+                changed=True
         if b.duration != u.duration:
             row["baseline_duration"]=b.duration; row["update_duration"]=u.duration
             duration_changed+=1; changed=True

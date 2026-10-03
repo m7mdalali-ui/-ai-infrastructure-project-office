@@ -7,6 +7,9 @@ def run_planning_task(task:str, **payload):
     routes={
         "baseline_review":lambda:agent.baseline_review(payload["path"]),
         "update_review":lambda:agent.update_review(payload["baseline_path"],payload["update_path"]),
+        "calendar_reconciliation":lambda:agent.calendar_reconciliation(**payload),
+        "lookahead":lambda:agent.lookahead(**payload),
+        "executive_summary":lambda:agent.executive_summary(**payload),
         "recovery_analysis":lambda:agent.recovery_analysis(**payload),
         "monthly_report_review":lambda:agent.monthly_report_review(payload["report"],payload.get("programme"),payload.get("previous_report")),
         "eot_assessment":lambda:agent.eot_assessment(payload["events"],payload.get("claimed_days")),

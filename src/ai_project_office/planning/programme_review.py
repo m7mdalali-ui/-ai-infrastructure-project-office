@@ -56,9 +56,14 @@ def review_programme(schedule: Schedule, programme_type: str="Updated") -> Progr
     issues=validate_schedule(schedule)
     audit_issues,audit_metrics=_baseline_audits(schedule)
     issues.extend(audit_issues)
+    for exception in schedule.metadata.get("data_exceptions",[]):
+        issues.append(ReviewIssue(exception["code"],Severity.ERROR,
+            "Source ingestion requires review: "+str(exception),evidence=str(exception)))
     cpm=None
-    try: cpm=calculate_cpm(schedule)
-    except NetworkCycleError as exc:
+    try:
+        if not any(a.metadata.get("duration_conversion_available") is False for a in schedule.activities.values()):
+            cpm=calculate_cpm(schedule)
+    except (NetworkCycleError, ValueError) as exc:
         issues.append(ReviewIssue("CIRCULAR_LOGIC",Severity.CRITICAL,str(exc),impact="CPM results cannot be relied upon",required_action="Correct circular logic and resubmit"))
     errors=[i for i in issues if i.severity in {Severity.ERROR,Severity.CRITICAL}]
     warnings=[i for i in issues if i.severity==Severity.WARNING]
