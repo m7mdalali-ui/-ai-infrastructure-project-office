@@ -15,3 +15,6 @@ test = ["pytest>=8.0"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[project.scripts]
+aipo-planning = "ai_project_office.planning.cli:main"
