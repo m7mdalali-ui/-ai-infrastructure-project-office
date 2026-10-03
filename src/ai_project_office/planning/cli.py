@@ -1,7 +1,7 @@
 from __future__ import annotations
 import argparse, json
 from .baseline import assess_baseline, assessment_to_dict
-from .service import load_schedule
+from .service import import_schedule
 
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="ai-project-office-planning")
@@ -12,7 +12,7 @@ def main(argv=None):
     b.add_argument("--long-duration-days",type=float,default=30.0)
     args=parser.parse_args(argv)
     if args.command=="baseline":
-        schedule=load_schedule(args.path, excel_map=args.excel_map)
+        schedule=import_schedule(args.path)
         result=assessment_to_dict(assess_baseline(schedule,args.long_duration_days))
         print(json.dumps(result,indent=2,default=str))
         return 0
