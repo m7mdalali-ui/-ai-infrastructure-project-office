@@ -39,10 +39,17 @@ def _baseline_audits(schedule: Schedule) -> tuple[list[ReviewIssue],dict]:
         issues.append(ReviewIssue("CONSTRAINT_AUDIT",Severity.INFO,f"{len(constraints)} activity/milestone record(s) contain a primary P6 constraint.",evidence="P6 TASK cstr_type",impact="Constraints may affect calculated float and criticality.",required_action="Confirm each constraint is contractually or technically justified."))
     if long_acts:
         issues.append(ReviewIssue("LONG_DURATION_AUDIT",Severity.INFO,f"{len(long_acts)} non-milestone activity record(s) exceed 30 calendar-normalized working days.",evidence="P6 target_drtn_hr_cnt / activity calendar day_hr_cnt",impact="Long activities may reduce progress transparency; legitimate LOE/procurement activities should be distinguished.",required_action="Review long-duration construction activities separately from LOE and long-lead procurement."))
+    inconsistent=[]
+    for cal in schedule.calendars.values():
+        parsed=cal.metadata.get("parsed_weekly_hours")
+        if parsed is not None and cal.hours_per_week is not None and abs(parsed-cal.hours_per_week)>0.01:
+            inconsistent.append((cal.id,cal.name,cal.hours_per_week,parsed))
+    if inconsistent:
+        issues.append(ReviewIssue("CALENDAR_HOURS_MISMATCH",Severity.WARNING,f"{len(inconsistent)} calendar(s) have week_hr_cnt inconsistent with the work periods encoded in clndr_data.",evidence=str(inconsistent[:10]),impact="Duration normalization and schedule calculations can be misleading if summary calendar fields are trusted without checking working periods.",required_action="Verify the affected P6 calendars and use detailed working periods/exceptions for independent date calculations."))
     if schedule.calendars:
         issues.append(ReviewIssue("CALENDAR_CPM_PENDING",Severity.WARNING,"Source calendars were preserved, but deterministic CPM is not yet calendar/exception aware.",evidence=f"{len(schedule.calendars)} P6 calendar(s) parsed including raw clndr_data",impact="Independent CPM dates/float must not yet be presented as equivalent to Primavera P6.",required_action="Use source P6 float/dates for baseline review until calendar-aware CPM is verified."))
 
-    metrics={"relationship_types":dict(rel_types),"positive_lag_count":len(positive_lags),"negative_lag_count":len(negative_lags),"compound_logic_pair_count":compound,"constraint_count":len(constraints),"long_duration_count":len(long_acts),"source_zero_float_count":zero_source_float,"source_near_critical_0_to_10_count":near_source_float}
+    metrics={"relationship_types":dict(rel_types),"positive_lag_count":len(positive_lags),"negative_lag_count":len(negative_lags),"compound_logic_pair_count":compound,"constraint_count":len(constraints),"long_duration_count":len(long_acts),"source_zero_float_count":zero_source_float,"source_near_critical_0_to_10_count":near_source_float,"calendar_hours_mismatch_count":len(inconsistent)}
     return issues,metrics
 
 def review_programme(schedule: Schedule, programme_type: str="Updated") -> ProgrammeReview:
