@@ -13,10 +13,14 @@ class MonthlyReportReview:
 def review_monthly_report(report: dict[str,Any], programme: dict[str,Any]|None=None,
                           previous_report: dict[str,Any]|None=None) -> MonthlyReportReview:
     """Cross-check already-extracted monthly-report facts. Never invent missing values."""
+    report=dict(report)
     p=programme or {}; prev=previous_report or {}; issues=[]; actions=[]
     planned=report.get("planned_percent"); actual=report.get("actual_percent")
     if planned is not None and actual is not None:
-        report["variance"]=actual-planned
+        calculated_variance=actual-planned
+        if report.get("variance") is not None and abs(report["variance"]-calculated_variance)>0.01:
+            issues.append({"code":"REPORTED_VARIANCE_MISMATCH","source":report["variance"],"calculated":calculated_variance})
+        report["calculated_variance"]=calculated_variance
     if p.get("planned_percent") is not None and planned is not None and abs(p["planned_percent"]-planned)>0.01:
         issues.append({"code":"PLANNED_PERCENT_MISMATCH","report":planned,"programme":p["planned_percent"]})
     if p.get("actual_percent") is not None and actual is not None and abs(p["actual_percent"]-actual)>0.01:
@@ -31,7 +35,7 @@ def review_monthly_report(report: dict[str,Any], programme: dict[str,Any]|None=N
     if planned is None or actual is None:
         issues.append({"code":"MISSING_PROGRESS_PERCENTAGE"}); actions.append("Confirm planned and actual progress for the reporting cut-off.")
     prev_var=prev.get("variance")
-    cur_var=report.get("variance")
+    cur_var=report.get("calculated_variance")
     if prev_var is not None and cur_var is not None:
         if cur_var>prev_var: trend="Recovering"
         elif cur_var<prev_var: trend="Deteriorating"

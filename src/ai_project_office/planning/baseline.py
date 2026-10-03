@@ -39,7 +39,7 @@ def assess_baseline(schedule: Schedule, long_duration_days: float=30.0) -> Basel
     roots=[a.id for a in schedule.activities.values() if incoming[a.id]==0]
     finishes=[a.id for a in schedule.activities.values() if outgoing[a.id]==0]
     isolated=[a.id for a in schedule.activities.values() if incoming[a.id]==0 and outgoing[a.id]==0 and len(ids)>1]
-    milestones=[a for a in schedule.activities.values() if a.duration==0 or "MILE" in (a.metadata.get("task_type") or "").upper()]
+    milestones=[a for a in schedule.activities.values() if (a.duration==0 and a.metadata.get("duration_conversion_available") is not False) or "MILE" in (a.metadata.get("task_type") or "").upper()]
     constraints=[a for a in schedule.activities.values() if a.metadata.get("constraint_type") or a.metadata.get("constraint_type_2")]
     long_acts=[a for a in schedule.activities.values() if a.duration>long_duration_days and a not in milestones]
     long_acts.sort(key=lambda a:a.duration,reverse=True)
@@ -60,7 +60,7 @@ def assess_baseline(schedule: Schedule, long_duration_days: float=30.0) -> Basel
     target_cost=schedule.metadata.get("target_cost_sum",0.0)
     cost_count=schedule.metadata.get("cost_assignment_count",0)
     if assignments and cost_count and target_cost:
-        loading_status="resource_and_cost_loaded"
+        loading_status="resource_and_cost_loaded" if cost_count==assignments else "partially_cost_loaded"
     elif assignments:
         loading_status="resource_loaded_cost_loading_unconfirmed"
     else:

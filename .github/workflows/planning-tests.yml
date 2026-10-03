@@ -2,8 +2,9 @@ name: Planning Engine Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "planning/**" ]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -15,4 +16,4 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[test]"
-      - run: pytest -q
+      - run: python -m pytest -q
