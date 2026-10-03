@@ -2,7 +2,7 @@ from __future__ import annotations
 from .models import Schedule, ReviewIssue, Severity
 
 def _issue(code, severity, description, activity_id=None, impact=None, action=None):
-    return ReviewIssue(code, severity, description, activity_id, activity_id, impact, action)
+    return ReviewIssue(code=code, severity=severity, description=description, activity_id=activity_id, evidence=activity_id, impact=impact, required_action=action)
 
 def validate_schedule(schedule: Schedule) -> list[ReviewIssue]:
     issues: list[ReviewIssue] = []
