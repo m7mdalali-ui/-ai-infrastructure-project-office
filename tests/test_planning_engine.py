@@ -95,3 +95,30 @@ def test_multiple_critical_paths():
 def test_source_float_preserved():
     a=Activity("A","A",1,source_total_float=-3)
     calculate_cpm(sched([a],[])); assert a.source_total_float==-3
+
+
+def test_relationship_preserves_lag_hours():
+    r=Relationship("A","B","FS",2.0,16.0)
+    assert r.lag==2.0 and r.lag_hours==16.0
+
+def test_baseline_review_marks_cpm_not_calendar_aware():
+    from ai_project_office.planning.models import Calendar
+    s=sched([Activity("A","A",1)],[])
+    s.calendars={"1":Calendar("1","7 day",8,56,"raw")}
+    review=review_programme(s,"Baseline")
+    assert review.calculated_results["deterministic_network_check"]["calendar_aware"] is False
+    assert "CALENDAR_CPM_PENDING" in {x["code"] for x in review.data_exceptions}
+
+def test_xer_parser_uses_activity_calendar_hours(tmp_path):
+    from ai_project_office.planning.parsers.xer import parse_xer
+    p=tmp_path/"sample.xer"
+    p.write_text(
+        "%T\tPROJECT\n%F\tproj_id\tproj_short_name\tclndr_id\n%R\t1\tTest\t10\n"
+        "%T\tCALENDAR\n%F\tclndr_id\tclndr_name\tday_hr_cnt\tweek_hr_cnt\tclndr_data\n%R\t10\tTen Hour\t10\t70\traw\n"
+        "%T\tTASK\n%F\ttask_id\ttask_code\ttask_name\tclndr_id\ttarget_drtn_hr_cnt\tremain_drtn_hr_cnt\tphys_complete_pct\ttotal_float_hr_cnt\n%R\t100\tA\tActivity A\t10\t100\t100\t0\t20\n"
+        "%T\tTASKPRED\n%F\ttask_id\tpred_task_id\tpred_type\tlag_hr_cnt\n",
+        encoding="utf-8")
+    s=parse_xer(p)
+    assert s.activities["A"].duration==10
+    assert s.activities["A"].source_total_float==2
+    assert s.calendars["10"].hours_per_day==10
