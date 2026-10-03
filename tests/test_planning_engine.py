@@ -219,3 +219,27 @@ def test_recovery_detects_workfront_cap():
     assert r.practical_crews==3
     assert r.recoverable_by_target is False
     assert "workfront" in r.bottleneck
+
+
+def test_monthly_review_cross_checks_programme_and_trend():
+    from ai_project_office.planning.monthly_report import review_monthly_report
+    r=review_monthly_report(
+        {"planned_percent":50,"actual_percent":40,"forecast_finish":"2026-12-01","constraints":[]},
+        {"planned_percent":52,"actual_percent":41,"forecast_finish":"2026-11-20","constraints":["NOC"]},
+        {"variance":-5})
+    codes={x["code"] for x in r.inconsistencies}
+    assert {"PLANNED_PERCENT_MISMATCH","ACTUAL_PERCENT_MISMATCH","FORECAST_FINISH_MISMATCH","PROGRAMME_CONSTRAINTS_OMITTED"} <= codes
+    assert r.trend=="Deteriorating"
+
+def test_eot_requires_cp_evidence_before_supported_days():
+    from ai_project_office.planning.eot import DelayEvent, assess_eot
+    r=assess_eot([DelayEvent("E1","Late approval",claimed_days=10,evidence_refs=["L1"],affected_activities=["A"])],10)
+    assert r.technically_supported_days is None
+    assert any(x["missing"]=="critical_path_impact" for x in r.missing_evidence)
+    assert r.commercial_entitlement_required is True
+
+def test_eot_deducts_concurrency_and_mitigation_from_technical_impact():
+    from ai_project_office.planning.eot import DelayEvent, assess_eot
+    r=assess_eot([DelayEvent("E1","Event",notice_ref="N1",evidence_refs=["R1"],affected_activities=["A"],critical_path_impact_days=20,concurrency_days=5,mitigation_days=3)],20)
+    assert r.technically_supported_days==12
+    assert r.concurrency_identified is True
