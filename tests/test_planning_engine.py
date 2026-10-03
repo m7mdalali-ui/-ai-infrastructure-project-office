@@ -174,3 +174,26 @@ def test_baseline_assessment_does_not_claim_calendar_cpm():
     from ai_project_office.planning.baseline import assess_baseline
     result=assess_baseline(sched([Activity("A","A",1)],[]))
     assert result.source_reconciliation["independent_cpm_calendar_aware"] is False
+
+
+def test_progress_comparison_detects_slippage_logic_and_float():
+    from datetime import datetime
+    from ai_project_office.planning.progress import compare_programmes
+    b=sched([Activity("A","A",5,planned_finish=datetime(2026,1,10),source_total_float=10),
+             Activity("B","B",2,planned_finish=datetime(2026,1,12),source_total_float=5)],
+            [Relationship("A","B","FS",0,0)])
+    u=sched([Activity("A","A",7,planned_finish=datetime(2026,1,15),source_total_float=2,percent_complete=20),
+             Activity("B","B",2,planned_finish=datetime(2026,1,12),source_total_float=0)],
+            [Relationship("A","B","SS",0,0)])
+    r=compare_programmes(b,u)
+    assert r.summary["duration_changes"]==1
+    assert r.summary["activities_with_later_planned_finish"]==1
+    assert r.summary["relationships_added"]==1 and r.summary["relationships_removed"]==1
+    assert r.criticality_changes[0]["activity_id"]=="A"
+
+def test_progress_comparison_flags_added_deleted_and_project_mismatch():
+    from ai_project_office.planning.progress import compare_programmes
+    b=Schedule("P1","Base",{"A":Activity("A","A",1)},[])
+    u=Schedule("P2","Update",{"B":Activity("B","B",1)},[])
+    codes={x["code"] for x in compare_programmes(b,u).data_exceptions}
+    assert {"ADDED_ACTIVITIES","DELETED_ACTIVITIES","PROJECT_ID_MISMATCH"} <= codes
