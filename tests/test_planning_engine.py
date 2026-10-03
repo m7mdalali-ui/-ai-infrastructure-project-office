@@ -135,3 +135,21 @@ def test_calendar_hours_mismatch_is_flagged():
     s.calendars={"1":Calendar("1","Named 7 days",8,40,"raw",{"parsed_weekly_hours":56,"exception_count":0})}
     review=review_programme(s,"Baseline")
     assert "CALENDAR_HOURS_MISMATCH" in {x["code"] for x in review.data_exceptions}
+
+
+def test_xer_parser_preserves_wbs_and_activity_codes(tmp_path):
+    from ai_project_office.planning.parsers.xer import parse_xer
+    p=tmp_path/"codes.xer"
+    p.write_text(
+        "%T\tPROJECT\n%F\tproj_id\tproj_short_name\n%R\t1\tTest\n"
+        "%T\tPROJWBS\n%F\twbs_id\twbs_short_name\twbs_name\tparent_wbs_id\n%R\t20\tUTIL\tUtilities\t\n"
+        "%T\tACTVTYPE\n%F\tactv_code_type_id\tactv_code_type\n%R\t30\tDiscipline\n"
+        "%T\tACTVCODE\n%F\tactv_code_id\tactv_code_type_id\tactv_code_name\tshort_name\n%R\t40\t30\tChilled Water\tCHW\n"
+        "%T\tTASK\n%F\ttask_id\ttask_code\ttask_name\twbs_id\ttarget_drtn_hr_cnt\n%R\t100\tA\tInstall pipe\t20\t8\n"
+        "%T\tTASKACTV\n%F\ttask_id\tactv_code_type_id\tactv_code_id\n%R\t100\t30\t40\n"
+        "%T\tTASKPRED\n%F\ttask_id\tpred_task_id\tpred_type\tlag_hr_cnt\n",
+        encoding="utf-8")
+    s=parse_xer(p)
+    assert s.activities["A"].metadata["wbs_name"]=="Utilities"
+    assert s.activities["A"].metadata["activity_codes"][0]["code"]=="CHW"
+    assert s.metadata["wbs_records"]["20"]["short_name"]=="UTIL"
