@@ -63,6 +63,12 @@ def parse_xer(path: str|Path) -> Schedule:
         )
 
     wbs={r.get("wbs_id"):r for r in tables.get("PROJWBS",[]) if r.get("wbs_id")}
+    code_types={r.get("actv_code_type_id"):r for r in tables.get("ACTVTYPE",[]) if r.get("actv_code_type_id")}
+    codes={r.get("actv_code_id"):r for r in tables.get("ACTVCODE",[]) if r.get("actv_code_id")}
+    task_codes={}
+    for r in tables.get("TASKACTV",[]):
+        c=codes.get(r.get("actv_code_id"),{}); ct=code_types.get(r.get("actv_code_type_id"),{})
+        task_codes.setdefault(r.get("task_id"),[]).append({"type":ct.get("actv_code_type"),"code":c.get("short_name"),"name":c.get("actv_code_name")})
     activities={}
     internal_to_code={}
     for r in tables.get("TASK",[]):
@@ -93,6 +99,8 @@ def parse_xer(path: str|Path) -> Schedule:
                 "float_path":r.get("float_path"),"float_path_order":r.get("float_path_order"),
                 "driving_path_flag":r.get("driving_path_flag"),
                 "wbs_name":wbs.get(r.get("wbs_id"),{}).get("wbs_name"),
+                "wbs_short_name":wbs.get(r.get("wbs_id"),{}).get("wbs_short_name"),
+                "activity_codes":task_codes.get(r.get("task_id"),[]),
             })
         activities[aid]=a
         if r.get("task_id"): internal_to_code[r["task_id"]]=aid
@@ -118,7 +126,8 @@ def parse_xer(path: str|Path) -> Schedule:
             "tables":sorted(tables),"table_counts":{k:len(v) for k,v in tables.items()},
             "project_calendar_id":proj.get("clndr_id"),"plan_start":proj.get("plan_start_date"),
             "plan_end":proj.get("plan_end_date"),"scheduled_end":proj.get("scd_end_date"),
-            "wbs_count":len(wbs),"resource_count":len(tables.get("RSRC",[])),
+            "wbs_count":len(wbs),"wbs_records":{k:{"name":v.get("wbs_name"),"short_name":v.get("wbs_short_name"),"parent_wbs_id":v.get("parent_wbs_id")} for k,v in wbs.items()},
+            "resource_count":len(tables.get("RSRC",[])),
             "resource_assignment_count":len(assignments),"activity_code_count":len(tables.get("ACTVCODE",[])),
             "activity_code_assignment_count":len(tables.get("TASKACTV",[])),
             "target_cost_sum":sum(cost_values),"cost_assignment_count":len(cost_values),
