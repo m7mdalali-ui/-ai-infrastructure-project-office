@@ -153,3 +153,24 @@ def test_xer_parser_preserves_wbs_and_activity_codes(tmp_path):
     assert s.activities["A"].metadata["wbs_name"]=="Utilities"
     assert s.activities["A"].metadata["activity_codes"][0]["code"]=="CHW"
     assert s.metadata["wbs_records"]["20"]["short_name"]=="UTIL"
+
+
+def test_baseline_assessment_counts_network_and_loading():
+    from ai_project_office.planning.baseline import assess_baseline
+    a=Activity("A","Start",0,source_total_float=0,metadata={"task_type":"TT_StartMile"})
+    b=Activity("B","Work",40,source_total_float=5)
+    c=Activity("C","Finish",0,source_total_float=0,metadata={"task_type":"TT_FinMile"})
+    s=sched([a,b,c],[Relationship("A","B","FS",2,16),Relationship("B","C","FS",0,0)])
+    s.metadata.update({"resource_count":2,"resource_assignment_count":3,"cost_assignment_count":3,"target_cost_sum":1000})
+    result=assess_baseline(s)
+    assert result.network["roots"]==["A"]
+    assert result.network["finishes"]==["C"]
+    assert result.lag_audit["positive_lag_count"]==1
+    assert len(result.long_duration_activities)==1
+    assert result.loading["status"]=="resource_and_cost_loaded"
+    assert result.executive_summary["human_decision_required"] is True
+
+def test_baseline_assessment_does_not_claim_calendar_cpm():
+    from ai_project_office.planning.baseline import assess_baseline
+    result=assess_baseline(sched([Activity("A","A",1)],[]))
+    assert result.source_reconciliation["independent_cpm_calendar_aware"] is False
