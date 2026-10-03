@@ -8,6 +8,15 @@ class Severity(str, Enum):
     INFO="info"; WARNING="warning"; ERROR="error"; CRITICAL="critical"
 
 @dataclass(slots=True)
+class Calendar:
+    id: str
+    name: str
+    hours_per_day: float | None = None
+    hours_per_week: float | None = None
+    raw_data: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+@dataclass(slots=True)
 class Activity:
     id: str
     name: str
@@ -38,6 +47,7 @@ class Relationship:
     successor_id: str
     type: str = "FS"
     lag: float = 0.0
+    lag_hours: float | None = None
 
 @dataclass(slots=True)
 class Schedule:
@@ -46,7 +56,7 @@ class Schedule:
     activities: dict[str, Activity] = field(default_factory=dict)
     relationships: list[Relationship] = field(default_factory=list)
     data_date: datetime | None = None
-    calendars: dict[str, Any] = field(default_factory=dict)
+    calendars: dict[str, Calendar] = field(default_factory=dict)
     source_type: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
