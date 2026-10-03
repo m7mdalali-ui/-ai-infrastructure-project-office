@@ -1,6 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
+import re
 from ..models import Activity, Calendar, Relationship, Schedule
 
 _DATE_FORMATS=("%Y-%m-%d %H:%M","%Y-%m-%d %H:%M:%S","%Y-%m-%d")
@@ -15,6 +16,20 @@ def _date(value):
         try: return datetime.strptime(value,fmt)
         except ValueError: pass
     return None
+
+def _calendar_profile(raw: str|None) -> dict:
+    """Extract auditable weekly work hours and exception count from P6 clndr_data.
+    This does not yet perform date arithmetic; it exposes source-calendar quality safely.
+    """
+    if not raw: return {"parsed_weekly_hours":None,"exception_count":0}
+    weekly=0.0
+    days=re.search(r"DaysOfWeek\(\)(.*?)(?:VIEW\(|Exceptions\()",raw,re.S)
+    if days:
+        for start,finish in re.findall(r"s\|(\d\d:\d\d)\|f\|(\d\d:\d\d)",days.group(1)):
+            sh,sm=map(int,start.split(":")); fh,fm=map(int,finish.split(":"))
+            weekly += (fh+fm/60)-(sh+sm/60)
+    exceptions=len(re.findall(r"\(d\|\d+\)",raw))
+    return {"parsed_weekly_hours":weekly,"exception_count":exceptions}
 
 def _read_tables(path: str|Path) -> dict[str,list[dict[str,str]]]:
     tables={}; table=None; fields=[]
@@ -37,12 +52,14 @@ def parse_xer(path: str|Path) -> Schedule:
     for r in tables.get("CALENDAR",[]):
         cid=r.get("clndr_id")
         if not cid: continue
+        raw=r.get("clndr_data")
+        profile=_calendar_profile(raw)
         calendars[cid]=Calendar(
             id=cid,name=r.get("clndr_name",""),
             hours_per_day=_float(r.get("day_hr_cnt")),
             hours_per_week=_float(r.get("week_hr_cnt")),
-            raw_data=r.get("clndr_data"),
-            metadata={"type":r.get("clndr_type"),"base_calendar_id":r.get("base_clndr_id")}
+            raw_data=raw,
+            metadata={"type":r.get("clndr_type"),"base_calendar_id":r.get("base_clndr_id"),**profile}
         )
 
     wbs={r.get("wbs_id"):r for r in tables.get("PROJWBS",[]) if r.get("wbs_id")}
