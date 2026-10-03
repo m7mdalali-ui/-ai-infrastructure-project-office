@@ -243,3 +243,24 @@ def test_eot_deducts_concurrency_and_mitigation_from_technical_impact():
     r=assess_eot([DelayEvent("E1","Event",notice_ref="N1",evidence_refs=["R1"],affected_activities=["A"],critical_path_impact_days=20,concurrency_days=5,mitigation_days=3)],20)
     assert r.technically_supported_days==12
     assert r.concurrency_identified is True
+
+
+def test_agent_recovery_route_is_human_governed():
+    from datetime import date
+    from ai_project_office.planning.api import run_planning_task
+    r=run_planning_task("recovery_analysis",remaining_quantity=1000,target_date=date(2026,1,10),
+        start_date=date(2026,1,1),production_per_crew_per_day=20,material_cap_per_day=60)
+    assert r["task"]=="recovery_analysis"
+    assert r["human_decision_required"] is True
+    assert r["result"]["recoverable_by_target"] is False
+
+def test_agent_eot_route_keeps_commercial_entitlement_separate():
+    from ai_project_office.planning.api import run_planning_task
+    r=run_planning_task("eot_assessment",events=[{"event_id":"E1","description":"Late approval"}],claimed_days=10)
+    assert r["result"]["commercial_entitlement_required"] is True
+    assert any("Commercial Agent" in x for x in r["required_actions"])
+
+def test_agent_rejects_unknown_task():
+    from ai_project_office.planning.api import run_planning_task
+    with pytest.raises(ValueError):
+        run_planning_task("invented_task")
