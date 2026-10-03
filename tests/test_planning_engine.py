@@ -122,3 +122,16 @@ def test_xer_parser_uses_activity_calendar_hours(tmp_path):
     assert s.activities["A"].duration==10
     assert s.activities["A"].source_total_float==2
     assert s.calendars["10"].hours_per_day==10
+
+
+def test_calendar_profile_detects_weekly_hours():
+    from ai_project_office.planning.parsers.xer import _calendar_profile
+    raw="DaysOfWeek() (0||1()(0||0(s|08:00|f|16:00)())) (0||2()(0||0(s|08:00|f|16:00)())) VIEW("
+    assert _calendar_profile(raw)["parsed_weekly_hours"]==16
+
+def test_calendar_hours_mismatch_is_flagged():
+    from ai_project_office.planning.models import Calendar
+    s=sched([Activity("A","A",1)],[])
+    s.calendars={"1":Calendar("1","Named 7 days",8,40,"raw",{"parsed_weekly_hours":56,"exception_count":0})}
+    review=review_programme(s,"Baseline")
+    assert "CALENDAR_HOURS_MISMATCH" in {x["code"] for x in review.data_exceptions}
